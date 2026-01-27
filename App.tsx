@@ -211,7 +211,6 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setIsAuthenticated(false);
-    // Optionally close any open private modals
     setShowMyTrips(false);
     setShowCreateTrip(false);
   };
@@ -324,9 +323,7 @@ const App: React.FC = () => {
             className="fixed inset-0 z-[400]"
           >
             <LoginPage 
-              onLoginSuccess={() => {
-                setShowLogin(false);
-              }} 
+              onLoginSuccess={() => setShowLogin(false)} 
               onRegisterClick={() => {
                 setShowLogin(false);
                 setShowRegister(true);
@@ -346,9 +343,7 @@ const App: React.FC = () => {
             className="fixed inset-0 z-[400]"
           >
             <RegisterPage 
-              onRegisterSuccess={() => {
-                setShowRegister(false);
-              }}
+              onRegisterSuccess={() => setShowRegister(false)}
               onLoginClick={() => {
                 setShowRegister(false);
                 setShowLogin(true);
@@ -418,7 +413,7 @@ const App: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[450]"
+            className="fixed inset-0 z-[600]"
           >
             <TripDetailsPage 
               tripId={selectedTripId}
