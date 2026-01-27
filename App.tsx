@@ -264,9 +264,9 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto space-y-16">
           <div className="flex flex-col items-center gap-8">
              <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center text-white font-bold border border-white/10 shadow-xl">
-                <span className="text-2xl">A</span>
+                <span className="text-2xl">T</span>
              </div>
-             <span className="text-3xl font-display font-bold tracking-[0.3em] uppercase">Aetheria</span>
+             <span className="text-3xl font-display font-bold tracking-[0.3em] uppercase">TLE</span>
           </div>
           <div className="flex flex-wrap justify-center gap-12 text-[11px] font-official font-bold tracking-[0.4em] uppercase text-white/20">
             <a href="#" className="hover:text-white transition-colors">Safety Protocol</a>

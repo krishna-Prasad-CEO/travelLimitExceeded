@@ -24,14 +24,12 @@ const TrajectoryNodes = ({ count = 12 }: { count?: number }) => {
           Math.random() * Math.PI,
           Math.random() * Math.PI * 2
         );
-        // Fix: Added key prop to correctly handle mapped components in React
         return <FloatingPoint key={i} position={pos} delay={i * 0.5} />;
       })}
     </group>
   );
 };
 
-// Fix: Use React.FC to define component and handle 'key' prop implicitly, and fix THREE.Vector3 type mapping
 const FloatingPoint: React.FC<{ position: THREE.Vector3, delay: number }> = ({ position, delay }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   useFrame((state) => {
@@ -83,7 +81,6 @@ const Hero: React.FC<HeroProps> = ({ onStart }) => {
     };
   }, []);
 
-  // Updated to a much more cinematic and high-resolution futuristic landscape
   const heroImage = "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=2560&auto=format&fit=crop";
 
   return (
@@ -104,7 +101,7 @@ const Hero: React.FC<HeroProps> = ({ onStart }) => {
         } as any)}
         className="absolute inset-0 z-0 will-change-transform"
       >
-        <img src={heroImage} alt="Aetheria Cinematic Landscape" className="w-full h-full object-cover brightness-[0.7]" />
+        <img src={heroImage} alt="TLE Cinematic Landscape" className="w-full h-full object-cover brightness-[0.7]" />
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-transparent to-slate-950/90 pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(45,212,191,0.05)_0%,transparent_70%)] pointer-events-none" />
       </motion.div>
@@ -130,10 +127,9 @@ const Hero: React.FC<HeroProps> = ({ onStart }) => {
             >
               <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-md text-white/70 text-[10px] font-bold tracking-[0.4em] uppercase shadow-2xl">
                 <Sparkles size={14} className="text-teal-400" />
-                Aetheria Trajectory
+                TLE Trajectory
               </div>
               
-              {/* Stable height container to prevent layout jumping during morphing */}
               <div className="h-[180px] md:h-[240px] lg:h-[300px] flex items-center justify-center">
                 <AnimatePresence mode="wait">
                   <motion.h1

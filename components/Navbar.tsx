@@ -135,7 +135,7 @@ const Navbar: React.FC<NavbarProps> = ({
             <span className={`text-[11px] font-bold tracking-[0.4em] uppercase transition-all duration-700 ${
               isScrolled ? 'text-white' : 'text-white/40 group-hover:text-white'
             }`}>
-              Aetheria
+              TLE
             </span>
           </button>
 
@@ -180,15 +180,13 @@ const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           <div className="flex items-center h-full ml-2 border-l border-white/5">
-            {isAuthenticated && (
-              <button
-                onClick={onMyTripsClick}
-                className="flex items-center gap-2 px-6 text-[10px] font-bold tracking-[0.3em] uppercase text-white/40 hover:text-white transition-colors z-10"
-              >
-                <Briefcase size={14} />
-                My Trips
-              </button>
-            )}
+            <button
+              onClick={onMyTripsClick}
+              className="flex items-center gap-2 px-6 text-[10px] font-bold tracking-[0.3em] uppercase text-white/40 hover:text-white transition-colors z-10"
+            >
+              <Briefcase size={14} />
+              My Odysseys
+            </button>
             <button
               onClick={onCreateTripClick}
               className="flex items-center gap-2 px-6 text-[10px] font-bold tracking-[0.3em] uppercase text-indigo-400 hover:text-indigo-300 transition-colors z-10"
@@ -210,7 +208,7 @@ const Navbar: React.FC<NavbarProps> = ({
       <nav className="fixed top-0 left-0 right-0 z-[120] md:hidden h-24 p-6 flex justify-between items-center transition-all duration-700 bg-gradient-to-b from-slate-950/40 to-transparent pointer-events-none">
         <div className="flex items-center gap-3 pointer-events-auto cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
           <Compass size={20} className="text-white" />
-          <span className="text-[10px] font-bold tracking-[0.4em] text-white uppercase">Aetheria</span>
+          <span className="text-[10px] font-bold tracking-[0.4em] text-white uppercase">TLE</span>
         </div>
         
         <div className="flex items-center gap-2 pointer-events-auto">
@@ -282,15 +280,13 @@ const Navbar: React.FC<NavbarProps> = ({
                       </button>
                     );
                   })}
-                  {isAuthenticated && (
-                    <button
-                      onClick={() => { onMyTripsClick(); setIsMobileMenuOpen(false); }}
-                      className="w-full flex items-center gap-6 p-6 rounded-3xl text-white/40"
-                    >
-                      <Briefcase size={24} />
-                      <span className="text-sm font-bold tracking-[0.2em] uppercase">My Odysseys</span>
-                    </button>
-                  )}
+                  <button
+                    onClick={() => { onMyTripsClick(); setIsMobileMenuOpen(false); }}
+                    className="w-full flex items-center gap-6 p-6 rounded-3xl text-white/40"
+                  >
+                    <Briefcase size={24} />
+                    <span className="text-sm font-bold tracking-[0.2em] uppercase">My Odysseys</span>
+                  </button>
                   <button
                     onClick={onCreateTripClick}
                     className="w-full flex items-center gap-6 p-6 rounded-3xl text-indigo-400 bg-indigo-500/10"

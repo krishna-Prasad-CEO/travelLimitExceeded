@@ -107,7 +107,7 @@ const MasterSequence = ({ onSequenceEnd, onLettersStart }: { onSequenceEnd: () =
 
 const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
   const [phase, setPhase] = useState<'air' | 'igniting' | 'assembling' | 'settling'>('air');
-  const letters = "AETHERIA".split("");
+  const letters = "TLE".split("");
 
   const handleSequenceEnd = () => {
     setPhase('settling');

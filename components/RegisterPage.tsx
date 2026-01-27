@@ -82,7 +82,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess, onLoginC
           <Compass className="text-white/30" size={18} />
         </div>
         <span className="text-sm font-display font-bold text-white/70 tracking-[0.4em] uppercase">
-          Aetheria
+          TLE
         </span>
       </div>
 

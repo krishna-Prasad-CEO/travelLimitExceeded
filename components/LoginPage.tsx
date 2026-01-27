@@ -44,19 +44,43 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onRegisterClick, 
     setStatus('idle');
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      if (email.includes('@') && password.length >= 6) {
-        setStatus('success');
-        setTimeout(onLoginSuccess, 1000);
-      } else {
-        throw new Error('Verification failed. Check your travel manifest.');
-      }
-    } catch (err: any) {
-      setStatus('error');
-      setErrorMessage(err.message || 'Unable to connect to travel servers.');
-    } finally {
-      setIsLoading(false);
-    }
+  setIsLoading(true);
+
+  const response = await fetch("http://localhost:8080/api/auth/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      email,
+      password
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Login failed");
+  }
+
+  const data = await response.json();
+
+  // Example: store JWT token
+  if (data.token) {
+    localStorage.setItem("token", data.token);
+  }
+
+  setStatus("success");
+  setTimeout(onLoginSuccess, 1000);
+
+} catch (err: any) {
+  setStatus("error");
+  setErrorMessage(
+    err.message || "Unable to connect to authentication servers."
+  );
+} finally {
+  setIsLoading(false);
+}
+
   };
 
   return (
@@ -74,7 +98,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onRegisterClick, 
           <Compass className="text-white/40" size={18} />
         </div>
         <span className="text-sm font-display font-bold text-white/80 tracking-[0.4em] uppercase">
-          Aetheria
+          TLE
         </span>
       </div>
 
@@ -112,7 +136,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onRegisterClick, 
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="EMAIL@AETHERIA.TRAVEL"
+                    placeholder="EMAIL@TLE.TRAVEL"
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg py-3.5 pl-12 pr-6 text-white text-xs placeholder:text-slate-700 focus:outline-none focus:border-slate-700 transition-all uppercase tracking-widest font-medium"
                   />
                 </div>
