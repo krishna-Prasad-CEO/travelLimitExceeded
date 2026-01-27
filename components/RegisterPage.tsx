@@ -2,9 +2,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  User, Mail, Phone, Lock, Bike, Trophy, 
-  ArrowRight, Loader2, Compass, Sparkles, X, CheckCircle2, ShieldAlert
+  ArrowRight, Loader2, Compass, X, CheckCircle2, ShieldAlert
 } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 interface RegisterPageProps {
   onRegisterSuccess: () => void;
@@ -48,42 +48,30 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess, onLoginC
     setStatus('idle');
 
     try {
-  setIsLoading(true);
+      const { error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.name,
+            phone_number: formData.phone,
+            riding_experience: formData.experience,
+            bike_type: formData.bikeType,
+          },
+        },
+      });
 
-  const response = await fetch("http://localhost:8080/api/auth/register", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      ridingExperience: formData.experience,
-      bikeType: formData.bikeType,
-      password: formData.password
-    })
-  });
+      if (error) throw error;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || "Registration failed");
-  }
+      setStatus("success");
+      setTimeout(onRegisterSuccess, 4000);
 
-  const data = await response.json();
-
-  setStatus("success");
-  setTimeout(onRegisterSuccess, 1000);
-
-} catch (err: any) {
-  setStatus("error");
-  setErrorMessage(
-    err.message || "Manifest enrollment failed. Please try again."
-  );
-} finally {
-  setIsLoading(false);
-}
-
+    } catch (err: any) {
+      setStatus("error");
+      setErrorMessage(err.message || "Enrollment failed.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -93,7 +81,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess, onLoginC
 
   return (
     <div className="relative w-full h-screen bg-[#020617] flex items-center justify-center overflow-hidden">
-      {/* Background Layers */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[#020617]" />
         <SubtleGlow color="bg-slate-800" size="w-[800px] h-[800px]" position="-bottom-48 -right-48" delay={1} />
@@ -110,149 +97,65 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess, onLoginC
       </div>
 
       {onClose && (
-        <button 
-          onClick={onClose}
-          className="absolute top-12 right-12 z-50 p-3 rounded-full bg-slate-900 border border-slate-800 text-white/30 transition-all"
-        >
+        <button onClick={onClose} className="absolute top-12 right-12 z-50 p-3 rounded-full bg-slate-900 border border-slate-800 text-white/30 transition-all">
           <X size={20} />
         </button>
       )}
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="relative z-10 w-full max-w-[540px] px-6 py-12"
-      >
-        <div className="relative group max-h-[90vh] overflow-y-auto custom-scrollbar no-jump">
-          <div className="relative bg-slate-900 border border-slate-800 rounded-[1.5rem] p-10 md:p-14 space-y-10 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)]">
-            <div className="space-y-1.5">
-              <h2 className="text-2xl font-display font-bold text-white tracking-tight uppercase">New Manifest</h2>
-              <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Enroll in Global Discovery Program</p>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 w-full max-w-[540px] px-6">
+        <div className="bg-slate-900 border border-slate-800 rounded-[1.5rem] p-10 md:p-14 space-y-10 shadow-2xl">
+          <div className="space-y-1.5">
+            <h2 className="text-2xl font-display font-bold text-white uppercase">New Manifest</h2>
+            <p className="text-slate-500 text-[10px] uppercase tracking-widest">Enroll in Global Discovery</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <input name="name" required value={formData.name} onChange={handleInputChange} placeholder="FULL NAME" className="w-full bg-slate-950 border border-slate-800 rounded-lg py-3 px-4 text-white text-[10px] font-bold tracking-widest uppercase" />
+              <input name="email" type="email" required value={formData.email} onChange={handleInputChange} placeholder="EMAIL@DOMAIN" className="w-full bg-slate-950 border border-slate-800 rounded-lg py-3 px-4 text-white text-[10px] font-bold tracking-widest uppercase" />
+            </div>
+            <input name="phone" required value={formData.phone} onChange={handleInputChange} placeholder="CONTACT NUMBER" className="w-full bg-slate-950 border border-slate-800 rounded-lg py-3 px-4 text-white text-[10px] font-bold tracking-widest uppercase" />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <select name="experience" value={formData.experience} onChange={handleInputChange} className="w-full bg-slate-950 border border-slate-800 rounded-lg py-3 px-4 text-white text-[10px] font-bold tracking-widest uppercase">
+                <option value="Novice">Novice</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Expert">Expert</option>
+              </select>
+              <select name="bikeType" value={formData.bikeType} onChange={handleInputChange} className="w-full bg-slate-950 border border-slate-800 rounded-lg py-3 px-4 text-white text-[10px] font-bold tracking-widest uppercase">
+                <option value="Adventure">Adventure</option>
+                <option value="Sport">Sport</option>
+                <option value="Off-Road">Off-Road</option>
+              </select>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name</label>
-                  <input
-                    name="name"
-                    required
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="NAME"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg py-3 px-4 text-white placeholder:text-slate-800 focus:outline-none focus:border-slate-700 transition-all text-[10px] font-bold tracking-widest uppercase"
-                  />
-                </div>
+            <input name="password" type="password" required value={formData.password} onChange={handleInputChange} placeholder="PASS-KEY (MIN 6 CHAR)" className="w-full bg-slate-950 border border-slate-800 rounded-lg py-3 px-4 text-white text-[10px] font-bold tracking-widest uppercase" />
 
-                <div className="space-y-2">
-                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Email</label>
-                  <input
-                    name="email"
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="EMAIL@DOMAIN"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg py-3 px-4 text-white placeholder:text-slate-800 focus:outline-none focus:border-slate-700 transition-all text-[10px] font-bold tracking-widest uppercase"
-                  />
-                </div>
-              </div>
+            <AnimatePresence mode="wait">
+              {status === 'error' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-3 bg-red-500/5 border border-red-500/10 rounded-lg text-red-400 text-[9px] font-bold uppercase tracking-widest">
+                  <ShieldAlert size={14} className="inline mr-2" /> {errorMessage}
+                </motion.div>
+              )}
+              {status === 'success' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-lg text-emerald-400 text-[9px] font-bold uppercase tracking-widest">
+                  <CheckCircle2 size={14} className="inline mr-2" /> Verify your email to activate manifest.
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-              <div className="space-y-2">
-                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Contact Protocol</label>
-                <input
-                  name="phone"
-                  required
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="+0 (000) 000-0000"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg py-3 px-4 text-white placeholder:text-slate-800 focus:outline-none focus:border-slate-700 transition-all text-[10px] font-bold tracking-widest uppercase"
-                />
-              </div>
+            <button type="submit" disabled={isLoading || status === 'success'} className="w-full h-12 bg-white text-slate-950 rounded-lg font-bold text-[10px] uppercase tracking-[0.4em] transition-all disabled:opacity-20 flex items-center justify-center gap-3">
+              {isLoading ? <Loader2 size={16} className="animate-spin" /> : <>Initialize Enrollment <ArrowRight size={14} /></>}
+            </button>
+          </form>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Level</label>
-                  <select
-                    name="experience"
-                    value={formData.experience}
-                    onChange={handleInputChange}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg py-3 px-4 text-white focus:outline-none focus:border-slate-700 transition-all text-[10px] font-bold tracking-widest uppercase appearance-none cursor-pointer"
-                  >
-                    <option className="bg-slate-900" value="Novice">Novice</option>
-                    <option className="bg-slate-900" value="Intermediate">Intermediate</option>
-                    <option className="bg-slate-900" value="Expert">Expert</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Class</label>
-                  <select
-                    name="bikeType"
-                    value={formData.bikeType}
-                    onChange={handleInputChange}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg py-3 px-4 text-white focus:outline-none focus:border-slate-700 transition-all text-[10px] font-bold tracking-widest uppercase appearance-none cursor-pointer"
-                  >
-                    <option className="bg-slate-900" value="Adventure">Adventure</option>
-                    <option className="bg-slate-900" value="Sport">Sport</option>
-                    <option className="bg-slate-900" value="Off-Road">Off-Road</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Pass-Key</label>
-                <input
-                  name="password"
-                  type="password"
-                  required
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="••••••••"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg py-3 px-4 text-white placeholder:text-slate-800 focus:outline-none focus:border-slate-700 transition-all text-[10px] font-bold tracking-widest uppercase"
-                />
-              </div>
-
-              <AnimatePresence mode="wait">
-                {status === 'error' && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-3 bg-red-500/5 border border-red-500/10 rounded-lg text-red-400 text-[9px] font-bold uppercase tracking-widest">
-                    <ShieldAlert size={14} className="inline mr-2" /> {errorMessage}
-                  </motion.div>
-                )}
-                {status === 'success' && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-lg text-emerald-400 text-[9px] font-bold uppercase tracking-widest">
-                    <CheckCircle2 size={14} className="inline mr-2" /> Enrollment Confirmed
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <button
-                type="submit"
-                disabled={isLoading || status === 'success'}
-                className="group relative w-full h-12 bg-white text-slate-950 rounded-lg font-bold text-[10px] uppercase tracking-[0.4em] overflow-hidden active:scale-[0.98] disabled:opacity-20 transition-all"
-              >
-                <div className="flex items-center justify-center gap-3 relative z-10">
-                  {isLoading ? <Loader2 size={16} className="animate-spin" /> : <>Complete Enrollment <ArrowRight size={14} /></>}
-                </div>
-              </button>
-            </form>
-
-            <div className="text-center">
-              <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">
-                Manifest registered?{' '}
-                <button onClick={onLoginClick} className="text-white/60 hover:text-white transition-colors">Sign In</button>
-              </p>
-            </div>
+          <div className="text-center">
+            <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">
+              Already enrolled? <button onClick={onLoginClick} className="text-white/60 hover:text-white transition-colors">Sign In</button>
+            </p>
           </div>
         </div>
       </motion.div>
-
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 10px; }
-      `}</style>
     </div>
   );
 };

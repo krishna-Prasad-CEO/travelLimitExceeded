@@ -46,6 +46,7 @@ export interface TripAlternative {
 
 export interface TripDetails {
   id: string;
+  creatorId: string;
   startLocation: string;
   destination: string;
   startDate: string;

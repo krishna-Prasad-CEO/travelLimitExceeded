@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { PerspectiveCamera, Stars, Float, Line } from '@react-three/drei';
@@ -19,6 +19,7 @@ import TripDetailsPage from './components/TripDetailsPage';
 import MyTripsPage from './components/MyTripsPage';
 import ExploreTripsPage from './components/ExploreTripsPage';
 import { TripPlan } from './types';
+import { supabase } from './supabaseClient';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -191,13 +192,37 @@ const App: React.FC = () => {
     restDelta: 0.001
   });
 
+  // Persist session and listen for auth changes
+  useEffect(() => {
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    };
+
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setIsAuthenticated(false);
+    // Optionally close any open private modals
+    setShowMyTrips(false);
+    setShowCreateTrip(false);
+  };
+
   return (
     <div ref={scrollRef} className="relative w-full min-h-screen selection:bg-indigo-500/30 bg-[#020617] overflow-x-hidden antialiased">
       
       <Navbar 
         onLoginClick={() => setShowLogin(true)} 
         isAuthenticated={isAuthenticated} 
-        onLogout={() => setIsAuthenticated(false)}
+        onLogout={handleLogout}
         onCreateTripClick={() => setShowCreateTrip(true)}
         onMyTripsClick={() => setShowMyTrips(true)}
         onExploreClick={() => setShowExplore(true)}
@@ -300,7 +325,6 @@ const App: React.FC = () => {
           >
             <LoginPage 
               onLoginSuccess={() => {
-                setIsAuthenticated(true);
                 setShowLogin(false);
               }} 
               onRegisterClick={() => {
@@ -323,7 +347,6 @@ const App: React.FC = () => {
           >
             <RegisterPage 
               onRegisterSuccess={() => {
-                setIsAuthenticated(true);
                 setShowRegister(false);
               }}
               onLoginClick={() => {

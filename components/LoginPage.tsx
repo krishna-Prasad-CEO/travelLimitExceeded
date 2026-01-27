@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Eye, EyeOff, Mail, Lock, ArrowRight, 
   Loader2, Compass, ShieldAlert, CheckCircle2, 
-  X, Globe, Plane, Sparkles
+  X
 } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
@@ -44,55 +45,32 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onRegisterClick, 
     setStatus('idle');
 
     try {
-  setIsLoading(true);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-  const response = await fetch("http://localhost:8080/api/auth/login", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      email,
-      password
-    })
-  });
+      if (error) throw error;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || "Login failed");
-  }
+      setStatus("success");
+      setTimeout(onLoginSuccess, 1000);
 
-  const data = await response.json();
-
-  // Example: store JWT token
-  if (data.token) {
-    localStorage.setItem("token", data.token);
-  }
-
-  setStatus("success");
-  setTimeout(onLoginSuccess, 1000);
-
-} catch (err: any) {
-  setStatus("error");
-  setErrorMessage(
-    err.message || "Unable to connect to authentication servers."
-  );
-} finally {
-  setIsLoading(false);
-}
-
+    } catch (err: any) {
+      setStatus("error");
+      setErrorMessage(err.message || "Authentication failed. Check your manifest.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="relative w-full h-screen bg-[#020617] flex items-center justify-center overflow-hidden">
-      {/* Background with minimal glows */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[#020617]" />
         <SubtleGlow color="bg-indigo-900" size="w-[800px] h-[800px]" position="-top-96 -left-96" delay={0} />
         <SubtleGlow color="bg-slate-800" size="w-[600px] h-[600px]" position="bottom-0 right-0" delay={2} />
       </div>
 
-      {/* Branded Elements */}
       <div className="absolute top-12 left-12 z-20 flex items-center gap-4">
         <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center border border-slate-800 shadow-2xl">
           <Compass className="text-white/40" size={18} />
@@ -111,7 +89,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onRegisterClick, 
         </button>
       )}
 
-      {/* Solid Matte Card */}
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
@@ -119,7 +96,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onRegisterClick, 
         className="relative z-10 w-full max-w-[420px] px-6"
       >
         <div className="relative bg-slate-900 border border-slate-800 rounded-[1.5rem] p-10 md:p-12 shadow-[0_40px_80px_-15px_rgba(0,0,0,0.8)] space-y-8">
-          
           <div className="space-y-1.5">
             <h2 className="text-2xl font-display font-bold text-white tracking-tight uppercase">Passport Access</h2>
             <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.1em]">Verify digital manifest</p>
@@ -199,26 +175,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onRegisterClick, 
               </div>
             </button>
           </form>
-
-          <div className="space-y-6 pt-2">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-800"></div>
-              </div>
-              <div className="relative flex justify-center text-[8px] uppercase tracking-[0.4em] font-bold">
-                <span className="bg-slate-900 px-3 text-slate-600">Unified Auth</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button className="flex items-center justify-center py-3 rounded-lg border border-slate-800 bg-slate-950 hover:bg-slate-800 transition-colors text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                Google
-              </button>
-              <button className="flex items-center justify-center py-3 rounded-lg border border-slate-800 bg-slate-950 hover:bg-slate-800 transition-colors text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                Apple
-              </button>
-            </div>
-          </div>
 
           <p className="text-center text-[9px] text-slate-600 font-bold uppercase tracking-[0.2em]">
             No manifest?{' '}
