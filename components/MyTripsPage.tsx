@@ -44,67 +44,60 @@ const MyTripsPage: React.FC<MyTripsPageProps> = ({ onTripClick, onClose }) => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        await new Promise(resolve => setTimeout(resolve, 1200));
-        
-        const mockTrips: TripSummary[] = [
-          {
-            id: 'trip-1',
-            startLocation: 'San Francisco',
-            destination: 'Tokyo',
-            startDate: '2025-06-15',
-            endDate: '2025-06-25',
-            speed: 2.5,
-            seats: 8,
-            availableSeats: 3,
-            status: 'active'
-          },
-          {
-            id: 'trip-2',
-            startLocation: 'London',
-            destination: 'Reykjavik',
-            startDate: '2025-12-01',
-            endDate: '2025-12-08',
-            speed: 1.0,
-            seats: 4,
-            availableSeats: 0,
-            status: 'full'
-          }
-        ];
+  setIsLoading(true);
 
-        const mockRequests: JoinRequest[] = [
-          {
-            id: 'req-1',
-            tripId: 'trip-1',
-            tripRoute: 'Tokyo Odyssey',
-            user: {
-              name: 'Aris Thorne',
-              email: 'aris@nexus.com',
-              avatar: 'https://i.pravatar.cc/150?u=aris'
-            },
-            status: 'pending',
-            timestamp: '2 hours ago'
-          },
-          {
-            id: 'req-2',
-            tripId: 'trip-1',
-            tripRoute: 'Tokyo Odyssey',
-            user: {
-              name: 'Luna Vane',
-              email: 'luna@orbit.travel',
-              avatar: 'https://i.pravatar.cc/150?u=luna'
-            },
-            status: 'pending',
-            timestamp: '5 hours ago'
-          }
-        ];
-
-        setTrips(mockTrips);
-        setRequests(mockRequests);
-      } catch (error) {
-        console.error('Failed to sync manifests', error);
-      } finally {
-        setIsLoading(false);
+  // 1️⃣ Fetch trips created by the logged-in user
+  const tripsResponse = await fetch(
+    "http://localhost:8080/api/trips/my",
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        // Required if secured
+        // "Authorization": `Bearer ${localStorage.getItem("token")}`
       }
+    }
+  );
+
+  if (!tripsResponse.ok) {
+    throw new Error("Failed to fetch my trips");
+  }
+
+  const tripsData: TripSummary[] = await tripsResponse.json();
+  setTrips(tripsData);
+
+  // 2️⃣ Fetch join requests for each trip
+  const allRequests: JoinRequest[] = [];
+
+  for (const trip of tripsData) {
+    const requestsResponse = await fetch(
+      `http://localhost:8080/api/trips/${trip.id}/requests`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          // "Authorization": `Bearer ${localStorage.getItem("token")}`
+        }
+      }
+    );
+
+    if (!requestsResponse.ok) {
+      console.warn(`Failed to fetch requests for trip ${trip.id}`);
+      continue;
+    }
+
+    const tripRequests: JoinRequest[] = await requestsResponse.json();
+    allRequests.push(...tripRequests);
+  }
+
+  setRequests(allRequests);
+
+} catch (error) {
+  console.error("Failed to sync manifests", error);
+} finally {
+  setIsLoading(false);
+}
+
     };
 
     fetchData();

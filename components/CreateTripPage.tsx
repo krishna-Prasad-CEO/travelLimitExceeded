@@ -37,24 +37,49 @@ const CreateTripPage: React.FC<CreateTripPageProps> = ({ onClose }) => {
     setIsSubmitting(true);
     
     try {
-      // API integration: POST /api/trips
-      // In a real app, you'd use fetch or axios here.
-      // const response = await fetch('/api/trips', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData)
-      // });
-      
-      // Simulating API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setNotification({ type: 'success', message: 'Trip odyssey initialized successfully!' });
-      setTimeout(onClose, 2000);
-    } catch (error) {
-      setNotification({ type: 'error', message: 'Manifest synchronization failed. Please retry.' });
-    } finally {
-      setIsSubmitting(false);
-    }
+  setIsSubmitting(true);
+
+  const response = await fetch("http://localhost:8080/api/trips", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      // If JWT secured:
+      // "Authorization": `Bearer ${localStorage.getItem("token")}`
+    },
+    body: JSON.stringify({
+      startLocation: formData.startLocation,
+      destination: formData.destination,
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      speed: formData.speed,
+      seats: formData.seats,
+      description: formData.description
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Failed to create trip");
+  }
+
+  const createdTrip = await response.json();
+
+  setNotification({
+    type: "success",
+    message: "Trip created successfully!"
+  });
+
+  setTimeout(onClose, 2000);
+
+} catch (error: any) {
+  setNotification({
+    type: "error",
+    message: error.message || "Manifest synchronization failed. Please retry."
+  });
+} finally {
+  setIsSubmitting(false);
+}
+
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

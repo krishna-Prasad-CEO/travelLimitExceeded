@@ -48,19 +48,42 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess, onLoginC
     setStatus('idle');
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      if (formData.email && formData.password.length >= 6) {
-        setStatus('success');
-        setTimeout(onRegisterSuccess, 1000);
-      } else {
-        throw new Error('Verification required for manifest enrollment.');
-      }
-    } catch (err: any) {
-      setStatus('error');
-      setErrorMessage(err.message || 'Manifest enrollment failed.');
-    } finally {
-      setIsLoading(false);
-    }
+  setIsLoading(true);
+
+  const response = await fetch("http://localhost:8080/api/auth/register", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      ridingExperience: formData.experience,
+      bikeType: formData.bikeType,
+      password: formData.password
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Registration failed");
+  }
+
+  const data = await response.json();
+
+  setStatus("success");
+  setTimeout(onRegisterSuccess, 1000);
+
+} catch (err: any) {
+  setStatus("error");
+  setErrorMessage(
+    err.message || "Manifest enrollment failed. Please try again."
+  );
+} finally {
+  setIsLoading(false);
+}
+
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {

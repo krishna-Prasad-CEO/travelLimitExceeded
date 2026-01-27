@@ -28,84 +28,32 @@ const ExploreTripsPage: React.FC<ExploreTripsPageProps> = ({ onTripClick, onClos
     const fetchTrips = async () => {
       setIsLoading(true);
       try {
-        // Mocking API call: GET /api/trips
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        const mockTrips: TripSummary[] = [
-          {
-            id: 'trip-1',
-            startLocation: 'San Francisco',
-            destination: 'Tokyo',
-            startDate: '2025-06-15',
-            endDate: '2025-06-25',
-            speed: 2.5,
-            seats: 8,
-            availableSeats: 3,
-            status: 'active'
-          },
-          {
-            id: 'trip-2',
-            startLocation: 'London',
-            destination: 'Reykjavik',
-            startDate: '2025-12-01',
-            endDate: '2025-12-08',
-            speed: 1.2,
-            seats: 4,
-            availableSeats: 2,
-            status: 'active'
-          },
-          {
-            id: 'trip-3',
-            startLocation: 'Berlin',
-            destination: 'Mars Habitat Alpha',
-            startDate: '2026-03-20',
-            endDate: '2026-09-10',
-            speed: 8.5,
-            seats: 12,
-            availableSeats: 1,
-            status: 'full'
-          },
-          {
-            id: 'trip-4',
-            startLocation: 'Paris',
-            destination: 'Santorini',
-            startDate: '2025-07-05',
-            endDate: '2025-07-12',
-            speed: 0.8,
-            seats: 2,
-            availableSeats: 1,
-            status: 'active'
-          },
-          {
-            id: 'trip-5',
-            startLocation: 'New York',
-            destination: 'The Moon (Base II)',
-            startDate: '2025-11-11',
-            endDate: '2025-11-20',
-            speed: 5.0,
-            seats: 6,
-            availableSeats: 0,
-            status: 'full'
-          },
-          {
-            id: 'trip-6',
-            startLocation: 'Singapore',
-            destination: 'Kyoto',
-            startDate: '2025-10-01',
-            endDate: '2025-10-05',
-            speed: 2.0,
-            seats: 10,
-            availableSeats: 7,
-            status: 'active'
-          }
-        ];
-        setTrips(mockTrips);
-        setFilteredTrips(mockTrips);
-      } catch (error) {
-        console.error('Failed to sync global manifest', error);
-      } finally {
-        setIsLoading(false);
-      }
+  setIsLoading(true);
+
+  const response = await fetch("http://localhost:8080/api/trips", {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      // If secured with JWT:
+      // "Authorization": `Bearer ${localStorage.getItem("token")}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch trips");
+  }
+
+  const tripsData: TripSummary[] = await response.json();
+
+  setTrips(tripsData);
+  setFilteredTrips(tripsData);
+
+} catch (error) {
+  console.error("Failed to sync global manifest", error);
+} finally {
+  setIsLoading(false);
+}
+
     };
 
     fetchTrips();

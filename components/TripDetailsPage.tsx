@@ -35,30 +35,33 @@ const TripDetailsPage: React.FC<TripDetailsPageProps> = ({
     const fetchTripDetails = async () => {
       setIsLoading(true);
       try {
-        // Mocking API call: GET /api/trips/{id}
-        await new Promise(resolve => setTimeout(resolve, 1200));
-        
-        const mockTrip: TripDetails = {
-          id: tripId,
-          startLocation: 'San Francisco, CA',
-          destination: 'Tokyo, Japan',
-          startDate: '2025-06-15',
-          endDate: '2025-06-25',
-          speed: 2.5,
-          seats: 8,
-          availableSeats: 3,
-          description: "An ultra-fast exploration of Tokyo's neon-lit corridors and hidden tech sanctuaries. We'll be moving at a brisk pace to cover the most immersive nodes of the city.",
-          creator: {
-            name: 'Kaelen Vance',
-            avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop'
-          }
-        };
-        setTrip(mockTrip);
-      } catch (error) {
-        console.error('Failed to fetch trip details', error);
-      } finally {
-        setIsLoading(false);
+  setIsLoading(true);
+
+  const response = await fetch(
+    `http://localhost:8080/api/trips/${tripId}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        // If JWT secured:
+        // "Authorization": `Bearer ${localStorage.getItem("token")}`
       }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch trip details");
+  }
+
+  const tripData: TripDetails = await response.json();
+  setTrip(tripData);
+
+} catch (error) {
+  console.error("Failed to fetch trip details", error);
+} finally {
+  setIsLoading(false);
+}
+
     };
 
     fetchTripDetails();
@@ -81,14 +84,39 @@ const TripDetailsPage: React.FC<TripDetailsPageProps> = ({
 
     setIsJoining(true);
     try {
-      // API integration: POST /api/trips/{id}/join
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setNotification({ type: 'success', message: 'Join request transmitted to the host.' });
-    } catch (error) {
-      setNotification({ type: 'error', message: 'Link stabilization failed. Please retry.' });
-    } finally {
-      setIsJoining(false);
+  setIsJoining(true);
+
+  const response = await fetch(
+    `http://localhost:8080/api/trips/${tripId}/join`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // If secured with JWT:
+        // "Authorization": `Bearer ${localStorage.getItem("token")}`
+      }
     }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Failed to send join request");
+  }
+
+  setNotification({
+    type: "success",
+    message: "Join request transmitted to the host."
+  });
+
+} catch (error: any) {
+  setNotification({
+    type: "error",
+    message: error.message || "Link stabilization failed. Please retry."
+  });
+} finally {
+  setIsJoining(false);
+}
+
   };
 
   useEffect(() => {
