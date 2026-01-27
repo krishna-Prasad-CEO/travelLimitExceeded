@@ -215,6 +215,22 @@ const App: React.FC = () => {
     setShowCreateTrip(false);
   };
 
+  const handleMyTripsClick = () => {
+    if (isAuthenticated) {
+      setShowMyTrips(true);
+    } else {
+      setShowLogin(true);
+    }
+  };
+
+  const handleCreateTripClick = () => {
+    if (isAuthenticated) {
+      setShowCreateTrip(true);
+    } else {
+      setShowLogin(true);
+    }
+  };
+
   return (
     <div ref={scrollRef} className="relative w-full min-h-screen selection:bg-indigo-500/30 bg-[#020617] overflow-x-hidden antialiased">
       
@@ -222,8 +238,8 @@ const App: React.FC = () => {
         onLoginClick={() => setShowLogin(true)} 
         isAuthenticated={isAuthenticated} 
         onLogout={handleLogout}
-        onCreateTripClick={() => setShowCreateTrip(true)}
-        onMyTripsClick={() => setShowMyTrips(true)}
+        onCreateTripClick={handleCreateTripClick}
+        onMyTripsClick={handleMyTripsClick}
         onExploreClick={() => setShowExplore(true)}
       />
       

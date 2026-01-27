@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, Search, Globe, Plane, ArrowRight, Loader2, Calendar, Gauge, Users, TrendingUp,
-  Navigation, CheckCircle2, ShieldAlert
+  Navigation, CheckCircle2, ShieldAlert, Clock, Check
 } from 'lucide-react';
 import { TripSummary } from '../types';
 import { supabase } from '../supabaseClient';
@@ -16,6 +16,8 @@ interface ExploreTripsPageProps {
 const ExploreTripsPage: React.FC<ExploreTripsPageProps> = ({ onTripClick, onClose }) => {
   const [trips, setTrips] = useState<TripSummary[]>([]);
   const [filteredTrips, setFilteredTrips] = useState<TripSummary[]>([]);
+  const [userRequests, setUserRequests] = useState<Record<string, string>>({});
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'available' | 'high-speed'>('all');
@@ -25,17 +27,22 @@ const ExploreTripsPage: React.FC<ExploreTripsPageProps> = ({ onTripClick, onClos
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const fetchTrips = async () => {
+    const fetchData = async () => {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase
+        // 1. Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        setCurrentUserId(user?.id || null);
+
+        // 2. Fetch Trips
+        const { data: tripsDataRaw, error: tripsError } = await supabase
           .from('trips')
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (tripsError) throw tripsError;
 
-        const tripsData: TripSummary[] = (data || []).map(t => ({
+        const tripsData: TripSummary[] = (tripsDataRaw || []).map(t => ({
           id: t.id,
           startLocation: t.start_location,
           destination: t.destination,
@@ -50,6 +57,22 @@ const ExploreTripsPage: React.FC<ExploreTripsPageProps> = ({ onTripClick, onClos
         setTrips(tripsData);
         setFilteredTrips(tripsData);
 
+        // 3. Fetch User's Join Requests to determine status
+        if (user) {
+          const { data: requestsData, error: requestsError } = await supabase
+            .from('join_requests')
+            .select('trip_id, status')
+            .eq('user_id', user.id);
+
+          if (!requestsError && requestsData) {
+            const requestMap: Record<string, string> = {};
+            requestsData.forEach(req => {
+              requestMap[req.trip_id] = req.status;
+            });
+            setUserRequests(requestMap);
+          }
+        }
+
       } catch (error) {
         console.error("Failed to sync global manifest", error);
       } finally {
@@ -57,7 +80,7 @@ const ExploreTripsPage: React.FC<ExploreTripsPageProps> = ({ onTripClick, onClos
       }
     };
 
-    fetchTrips();
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -74,10 +97,9 @@ const ExploreTripsPage: React.FC<ExploreTripsPageProps> = ({ onTripClick, onClos
   }, [searchQuery, activeFilter, trips]);
 
   const handleJoinRequest = async (e: React.MouseEvent, trip: TripSummary) => {
-    e.stopPropagation(); // Prevent card click
+    e.stopPropagation(); 
     
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    if (!currentUserId) {
       setNotification({ type: 'error', message: "Identity verification required. Sign in first." });
       return;
     }
@@ -88,7 +110,7 @@ const ExploreTripsPage: React.FC<ExploreTripsPageProps> = ({ onTripClick, onClos
         .from('join_requests')
         .insert([{
           trip_id: trip.id,
-          user_id: user.id,
+          user_id: currentUserId,
           status: 'pending'
         }]);
 
@@ -97,6 +119,7 @@ const ExploreTripsPage: React.FC<ExploreTripsPageProps> = ({ onTripClick, onClos
         throw error;
       }
 
+      setUserRequests(prev => ({ ...prev, [trip.id]: 'pending' }));
       setNotification({ type: 'success', message: "Join request transmitted successfully." });
     } catch (err: any) {
       setNotification({ type: 'error', message: err.message || "Link stabilization failed." });
@@ -158,6 +181,7 @@ const ExploreTripsPage: React.FC<ExploreTripsPageProps> = ({ onTripClick, onClos
                 <ExploreCard 
                   key={trip.id} 
                   trip={trip} 
+                  requestStatus={userRequests[trip.id]}
                   onInspect={() => onTripClick(trip.id)} 
                   onJoin={(e) => handleJoinRequest(e, trip)}
                   isJoining={joiningId === trip.id}
@@ -187,43 +211,64 @@ const ExploreTripsPage: React.FC<ExploreTripsPageProps> = ({ onTripClick, onClos
 
 const ExploreCard: React.FC<{ 
   trip: TripSummary, 
+  requestStatus?: string,
   onInspect: () => void, 
   onJoin: (e: React.MouseEvent) => void,
   isJoining: boolean
-}> = ({ trip, onInspect, onJoin, isJoining }) => (
-  <motion.div
-    whileHover={{ y: -5 }}
-    onClick={onInspect}
-    className="bg-slate-900/60 border border-white/5 rounded-[2.5rem] p-8 flex flex-col justify-between cursor-pointer shadow-xl transition-all group"
-  >
-    <div className="space-y-6">
-      <div className="flex justify-between items-start">
-        <h3 className="text-2xl font-display font-bold text-white uppercase leading-tight">{trip.destination}</h3>
-        <span className={`px-4 py-1.5 rounded-full text-[8px] font-bold border ${trip.status === 'full' ? 'border-red-500/20 text-red-400' : 'border-teal-500/20 text-teal-400'}`}>
-          {trip.status}
-        </span>
+}> = ({ trip, requestStatus, onInspect, onJoin, isJoining }) => {
+  
+  const getButtonContent = () => {
+    if (isJoining) return <Loader2 size={16} className="animate-spin" />;
+    if (requestStatus === 'pending') return <><Clock size={14} /> Signal Pending</>;
+    if (requestStatus === 'approved') return <><Check size={14} /> Authorized</>;
+    if (requestStatus === 'rejected') return <>Access Denied</>;
+    if (trip.availableSeats === 0) return "Manifest Full";
+    return <>Request to Join <Navigation size={14} /></>;
+  };
+
+  const isButtonDisabled = isJoining || trip.availableSeats === 0 || !!requestStatus;
+
+  return (
+    <motion.div
+      whileHover={{ y: -5 }}
+      onClick={onInspect}
+      className="bg-slate-900/60 border border-white/5 rounded-[2.5rem] p-8 flex flex-col justify-between cursor-pointer shadow-xl transition-all group"
+    >
+      <div className="space-y-6">
+        <div className="flex justify-between items-start">
+          <h3 className="text-2xl font-display font-bold text-white uppercase leading-tight">{trip.destination}</h3>
+          <span className={`px-4 py-1.5 rounded-full text-[8px] font-bold border ${trip.status === 'full' ? 'border-red-500/20 text-red-400' : 'border-teal-500/20 text-teal-400'}`}>
+            {trip.status}
+          </span>
+        </div>
+        <div className="space-y-2">
+          <p className="text-[10px] text-white/30 uppercase tracking-widest">{trip.startLocation} &rarr; {trip.startDate}</p>
+          <p className="text-xs text-teal-400 font-bold uppercase">{trip.availableSeats} VACANT NODES</p>
+        </div>
       </div>
-      <div className="space-y-2">
-        <p className="text-[10px] text-white/30 uppercase tracking-widest">{trip.startLocation} &rarr; {trip.startDate}</p>
-        <p className="text-xs text-teal-400 font-bold uppercase">{trip.availableSeats} VACANT NODES</p>
+      <div className="mt-8 flex flex-col gap-3">
+        <button 
+          onClick={onJoin}
+          disabled={isButtonDisabled}
+          className={`w-full h-14 rounded-2xl flex items-center justify-center gap-4 text-[10px] font-bold uppercase tracking-[0.2em] transition-all shadow-lg ${
+            requestStatus === 'approved' 
+              ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20 cursor-default'
+              : requestStatus === 'pending'
+              ? 'bg-white/5 text-white/40 border border-white/10 cursor-default'
+              : 'bg-white text-slate-950 hover:bg-slate-200 disabled:opacity-20'
+          }`}
+        >
+          {getButtonContent()}
+        </button>
+        <button 
+          onClick={(e) => { e.stopPropagation(); onInspect(); }}
+          className="w-full h-14 bg-white/[0.05] border border-white/10 rounded-2xl flex items-center justify-center gap-4 text-[10px] font-bold uppercase text-white/40 hover:text-white hover:bg-white/10 transition-all"
+        >
+          Inspect Manifest <ArrowRight size={14} />
+        </button>
       </div>
-    </div>
-    <div className="mt-8 flex flex-col gap-3">
-      <button 
-        onClick={onJoin}
-        disabled={isJoining || trip.availableSeats === 0}
-        className="w-full h-14 bg-white text-slate-950 rounded-2xl flex items-center justify-center gap-4 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-slate-200 transition-all shadow-lg disabled:opacity-20"
-      >
-        {isJoining ? <Loader2 size={16} className="animate-spin" /> : <>Request to Join <Navigation size={14} /></>}
-      </button>
-      <button 
-        onClick={(e) => { e.stopPropagation(); onInspect(); }}
-        className="w-full h-14 bg-white/[0.05] border border-white/10 rounded-2xl flex items-center justify-center gap-4 text-[10px] font-bold uppercase text-white/40 hover:text-white hover:bg-white/10 transition-all"
-      >
-        Inspect Manifest <ArrowRight size={14} />
-      </button>
-    </div>
-  </motion.div>
-);
+    </motion.div>
+  );
+};
 
 export default ExploreTripsPage;

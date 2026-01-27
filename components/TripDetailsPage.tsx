@@ -6,7 +6,8 @@ import {
   X, MapPin, Calendar, Gauge, Users, 
   ArrowLeft, Sparkles, Navigation, 
   User, CheckCircle2, ShieldAlert, 
-  Loader2, Share2, Heart, Clock, Check
+  Loader2, Share2, Heart, Clock, Check,
+  Zap, Compass, Target, Globe
 } from 'lucide-react';
 import { TripDetails } from '../types';
 import { supabase } from '../supabaseClient';
@@ -32,12 +33,12 @@ const TripDetailsPage: React.FC<TripDetailsPageProps> = ({
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   
   const routeRef = useRef<SVGPathElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchAllData = async () => {
       setIsLoading(true);
       try {
-        // 1. Fetch Trip Details
         const { data: tripData, error: tripError } = await supabase
           .from('trips')
           .select('*')
@@ -63,7 +64,6 @@ const TripDetailsPage: React.FC<TripDetailsPageProps> = ({
           }
         });
 
-        // 2. Fetch current user and check for existing requests
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           setCurrentUserId(user.id);
@@ -74,9 +74,7 @@ const TripDetailsPage: React.FC<TripDetailsPageProps> = ({
             .eq('user_id', user.id)
             .maybeSingle();
           
-          if (reqData) {
-            setUserRequestStatus(reqData.status);
-          }
+          if (reqData) setUserRequestStatus(reqData.status);
         }
 
       } catch (error) {
@@ -123,23 +121,14 @@ const TripDetailsPage: React.FC<TripDetailsPageProps> = ({
         }]);
 
       if (error) {
-        if (error.code === '23505') {
-          throw new Error("Signal already in transit.");
-        }
+        if (error.code === '23505') throw new Error("Signal already in transit.");
         throw error;
       }
 
       setUserRequestStatus('pending');
-      setNotification({
-        type: "success",
-        message: "Signal transmitted to host."
-      });
-
+      setNotification({ type: "success", message: "Signal transmitted to host." });
     } catch (error: any) {
-      setNotification({
-        type: "error",
-        message: error.message || "Link stabilization failed."
-      });
+      setNotification({ type: "error", message: error.message || "Link stabilization failed." });
     } finally {
       setIsJoining(false);
     }
@@ -168,70 +157,167 @@ const TripDetailsPage: React.FC<TripDetailsPageProps> = ({
 
   const getButtonContent = () => {
     if (isJoining) return <Loader2 className="animate-spin" />;
-    if (isOwner) return "YOUR ODYSSEY";
+    if (isOwner) return "YOUR ACTIVE ODYSSEY";
     if (userRequestStatus === 'pending') return <span className="flex items-center gap-3"><Clock size={18}/> SIGNAL PENDING</span>;
-    if (userRequestStatus === 'approved') return <span className="flex items-center gap-3"><Check size={18}/> AUTHORIZED</span>;
-    if (userRequestStatus === 'rejected') return "SIGNAL DENIED";
+    if (userRequestStatus === 'approved') return <span className="flex items-center gap-3"><Check size={18}/> AUTHORIZED ENTRY</span>;
+    if (userRequestStatus === 'rejected') return "SIGNAL REFUSED";
     if (trip.availableSeats === 0) return "MANIFEST FULL";
-    return <span className="flex items-center gap-4">REQUEST TO JOIN ODYSSEY <Navigation size={20}/></span>;
+    return <span className="flex items-center gap-4">REQUEST ODYSSEY JOIN <Navigation size={20}/></span>;
   };
 
   return (
-    <div className="fixed inset-0 z-[500] bg-[#020617] overflow-hidden flex flex-col">
+    <div ref={containerRef} className="fixed inset-0 z-[500] bg-[#020617] overflow-hidden flex flex-col">
+      {/* Background Cinematic Elements */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-b from-indigo-950/20 via-slate-950 to-slate-950" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <svg className="w-full max-w-4xl h-[400px]" viewBox="0 0 1000 400">
-            <path ref={routeRef} d="M150 200 Q 500 50 850 200" fill="none" stroke="url(#routeGradient)" strokeWidth="3" strokeLinecap="round" />
-            <defs><linearGradient id="routeGradient"><stop offset="0%" stopColor="#6366f1"/><stop offset="100%" stopColor="#2dd4bf"/></linearGradient></defs>
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950" />
+        <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none overflow-hidden">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.15)_0%,transparent_60%)] animate-pulse" />
+        </div>
+        <div className="absolute inset-0 flex items-center justify-center opacity-40">
+          <svg className="w-full max-w-6xl h-[500px]" viewBox="0 0 1000 400">
+            <path ref={routeRef} d="M100 250 Q 500 80 900 250" fill="none" stroke="url(#routeGradient)" strokeWidth="1" strokeLinecap="round" strokeDasharray="5,10" />
+            <defs>
+                <linearGradient id="routeGradient"><stop offset="0%" stopColor="#6366f1"/><stop offset="100%" stopColor="#2dd4bf"/></linearGradient>
+            </defs>
           </svg>
         </div>
       </div>
 
-      <div className="relative z-20 p-8 flex justify-between items-center">
-        <button onClick={onClose} className="flex items-center gap-3 text-white/40 hover:text-white uppercase tracking-[0.4em] text-xs font-bold">
-          <ArrowLeft size={16} /> Back
+      {/* Header Actions */}
+      <div className="relative z-20 p-8 flex justify-between items-center bg-slate-950/40 backdrop-blur-md border-b border-white/5">
+        <button onClick={onClose} className="flex items-center gap-4 text-white/40 hover:text-white transition-all group">
+          <div className="p-2 rounded-lg bg-white/5 group-hover:bg-white/10 transition-all">
+            <ArrowLeft size={16} />
+          </div>
+          <span className="uppercase tracking-[0.4em] text-[9px] font-bold">Return to Manifest</span>
         </button>
+        <div className="flex items-center gap-3">
+             <div className="w-2 h-2 rounded-full bg-teal-500 shadow-[0_0_10px_rgba(20,184,166,0.6)] animate-pulse" />
+             <span className="text-[9px] font-official font-bold text-white/30 uppercase tracking-[0.2em]">Link Stabilized</span>
+        </div>
       </div>
 
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 overflow-y-auto custom-scrollbar">
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-5xl pb-32">
-          <div className="bg-slate-900/60 backdrop-blur-3xl border border-white/5 rounded-[3rem] p-16 flex flex-col md:flex-row gap-12 items-center">
-            <div className="flex-1 space-y-6">
-              <h1 className="text-6xl md:text-7xl font-display font-bold text-white uppercase tracking-tighter">{trip.destination}</h1>
-              <p className="text-white/40 uppercase tracking-widest font-official text-[10px]">{trip.startLocation} &rarr; {trip.startDate}</p>
+      {/* Main Content Area */}
+      <div className="relative z-10 flex-1 flex flex-col items-center px-6 overflow-y-auto custom-scrollbar pt-12">
+        <motion.div 
+            initial={{ opacity: 0, y: 30 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            className="w-full max-w-6xl space-y-12 pb-48"
+        >
+          {/* Main Hero Card */}
+          <div className="relative bg-slate-900/40 backdrop-blur-3xl border border-white/10 rounded-[3.5rem] p-10 md:p-20 overflow-hidden shadow-2xl">
+            <div className="absolute top-0 right-0 p-12 opacity-[0.03] rotate-12">
+                <Globe size={300} />
             </div>
-            <div className="flex flex-col items-end gap-6">
-              <div className="flex items-center gap-4">
-                 <img src={trip.creator.avatar} className="w-14 h-14 rounded-2xl border border-white/10" />
-                 <p className="text-white font-bold uppercase text-[10px] tracking-widest">{isOwner ? "YOU (HOST)" : trip.creator.name}</p>
+            
+            <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-12">
+              <div className="space-y-8 flex-1">
+                <div className="space-y-4">
+                    <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                        <Sparkles size={14} />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">Active Odyssey</span>
+                    </div>
+                    <h1 className="text-7xl md:text-9xl font-display font-bold text-white uppercase tracking-tighter leading-none">
+                        {trip.destination}
+                    </h1>
+                    <div className="flex items-center gap-6">
+                        <p className="text-teal-400 font-official font-bold text-xs uppercase tracking-[0.3em]">
+                            {trip.startLocation} &bull; <span className="text-white/40">{trip.startDate}</span>
+                        </p>
+                    </div>
+                </div>
+
+                {/* Description Narrative */}
+                <div className="relative max-w-2xl">
+                    <div className="absolute -left-6 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 to-transparent opacity-30 rounded-full" />
+                    <p className="text-xl md:text-2xl text-white/70 leading-relaxed font-light font-handwritten italic">
+                        "{trip.description || 'Our trajectory remains undefined. The narrative of this odyssey is yet to be inscribed.'}"
+                    </p>
+                </div>
               </div>
-              <span className={`px-5 py-2 rounded-xl border uppercase font-bold text-xs ${trip.availableSeats > 0 ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
-                {trip.availableSeats} VACANT NODES
-              </span>
+
+              {/* Sidebar Info Card */}
+              <div className="w-full lg:w-[320px] space-y-6">
+                <div className="bg-slate-950/50 rounded-3xl p-8 border border-white/5 space-y-8">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[8px] font-official font-bold text-white/30 uppercase tracking-[0.3em]">{isOwner ? "YOUR PROFILE" : "Trajectory Host"}</span>
+                        <div className={`w-3 h-3 rounded-full border-2 border-slate-900 ${isOwner ? 'bg-indigo-500' : 'bg-teal-500'}`} />
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <img src={trip.creator.avatar} className="w-16 h-16 rounded-2xl border border-white/10 shadow-2xl" />
+                        <div className="space-y-1">
+                            <p className="text-sm font-bold text-white uppercase tracking-wider">{isOwner ? "YOU (HOST)" : trip.creator.name}</p>
+                            <p className="text-[10px] text-white/20 uppercase tracking-widest font-official">Lead Navigator</p>
+                        </div>
+                    </div>
+                    <div className="pt-6 border-t border-white/5">
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-[9px] font-official font-bold text-white/40 uppercase">Vessel Occupancy</span>
+                            <span className="text-xs font-bold text-teal-400">{trip.availableSeats} LEFT</span>
+                        </div>
+                        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                            <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${(trip.availableSeats / trip.seats) * 100}%` }}
+                                transition={{ duration: 1.5, ease: "circOut" }}
+                                className="h-full bg-teal-500 shadow-[0_0_10px_rgba(20,184,166,0.5)]" 
+                            />
+                        </div>
+                    </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="mt-8 p-12 bg-white/[0.02] border border-white/5 rounded-[2rem]">
-            <p className="text-xl text-white/70 leading-relaxed font-light italic">"{trip.description || 'No narrative provided for this journey.'}"</p>
+
+          {/* Telemetry Data Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {[
+              { label: 'Time Horizon', value: `${trip.seats} Cycles`, icon: Clock, color: 'text-indigo-400' },
+              { label: 'Signal Range', value: 'Level 04', icon: Target, color: 'text-teal-400' },
+              { label: 'Vessel Node', value: trip.seats, icon: Users, color: 'text-fuchsia-400' },
+              { label: 'Speed Index', value: '3.4 G/s', icon: Zap, color: 'text-yellow-400' }
+            ].map((stat, i) => (
+              <div key={i} className="bg-white/[0.03] border border-white/5 p-8 rounded-[2rem] hover:bg-white/[0.05] transition-all group">
+                <stat.icon className={`${stat.color} mb-6 group-hover:scale-110 transition-transform`} size={20} />
+                <p className="text-[9px] font-official font-bold text-white/20 uppercase tracking-[0.4em] mb-2">{stat.label}</p>
+                <p className="text-xl font-display font-bold text-white uppercase tracking-tight">{stat.value}</p>
+              </div>
+            ))}
           </div>
         </motion.div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-12 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent">
-        <div className="max-w-5xl mx-auto">
-          <button 
+      {/* Persistent Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 p-12 bg-gradient-to-t from-[#020617] via-[#020617]/90 to-transparent z-30">
+        <div className="max-w-6xl mx-auto">
+          <motion.button 
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
             onClick={handleJoinTrip} 
             disabled={buttonDisabled} 
-            className="w-full h-20 bg-white text-slate-950 rounded-2xl font-bold uppercase tracking-[0.6em] hover:bg-slate-100 transition-all flex items-center justify-center gap-6 shadow-2xl disabled:opacity-20"
+            className={`w-full h-24 rounded-3xl font-bold uppercase tracking-[0.6em] transition-all flex items-center justify-center gap-6 shadow-2xl text-[11px] border ${
+                isOwner 
+                ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 cursor-default'
+                : 'bg-white text-slate-950 hover:bg-indigo-50 disabled:opacity-20 disabled:cursor-not-allowed'
+            }`}
           >
             {getButtonContent()}
-          </button>
+          </motion.button>
         </div>
       </div>
 
+      {/* Notification System */}
       <AnimatePresence>
         {notification && (
-          <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`fixed bottom-32 left-1/2 -translate-x-1/2 z-[600] px-10 py-5 rounded-full border shadow-2xl flex items-center gap-4 ${notification.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0 }} 
+            className={`fixed bottom-40 left-1/2 -translate-x-1/2 z-[600] px-10 py-5 rounded-full border shadow-2xl backdrop-blur-xl flex items-center gap-4 ${
+                notification.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
+            }`}
+          >
+            {notification.type === 'success' ? <CheckCircle2 size={16}/> : <ShieldAlert size={16}/>}
             <span className="text-[10px] font-official font-bold uppercase tracking-[0.4em]">{notification.message}</span>
           </motion.div>
         )}
