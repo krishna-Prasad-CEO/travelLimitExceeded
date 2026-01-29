@@ -23,7 +23,6 @@ const TouristGuide = ({ isListening, isFocused, isNodding }: { isListening: bool
           transition={{ duration: 0.5 }}
         />
         <path d="M85 160 Q100 150 115 160 L110 175 Q100 168 90 175 Z" fill="#334155" />
-        {/* Fix: Separated animate and transition props to fix syntax error causing later parsing issues */}
         <motion.g
           animate={{ 
             rotate: isNodding ? [0, 8, 0, 8, 0] : isFocused ? -3 : isListening ? [0, -1, 1, 0] : [0, 1, -1, 0],
@@ -33,7 +32,7 @@ const TouristGuide = ({ isListening, isFocused, isNodding }: { isListening: bool
             rotate: { duration: isNodding ? 0.4 : isListening ? 2 : 5, repeat: isNodding ? 0 : Infinity, ease: "easeInOut" },
             y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
           }}
-          style={{ originX: '100px', originY: '160px' }}
+          style={{ transformOrigin: '100px 160px' }}
         >
           <circle cx="100" cy="100" r="48" fill="#f8fafc" />
           <path d="M52 100 Q52 55 100 55 Q148 55 148 100" fill="#334155" />

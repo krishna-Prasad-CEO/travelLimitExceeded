@@ -18,6 +18,7 @@ import CreateTripPage from './components/CreateTripPage';
 import TripDetailsPage from './components/TripDetailsPage';
 import MyTripsPage from './components/MyTripsPage';
 import ExploreTripsPage from './components/ExploreTripsPage';
+import TripParticipantsPage from './components/TripParticipantsPage';
 import { TripPlan } from './types';
 import { supabase } from './supabaseClient';
 
@@ -180,6 +181,7 @@ const App: React.FC = () => {
   const [showMyTrips, setShowMyTrips] = useState(false);
   const [showExplore, setShowExplore] = useState(false);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
+  const [participantsTripId, setParticipantsTripId] = useState<string | null>(null);
   const [activePlan, setActivePlan] = useState<TripPlan | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
@@ -398,6 +400,10 @@ const App: React.FC = () => {
                 setShowMyTrips(false);
                 setSelectedTripId(id);
               }}
+              onParticipantsClick={(id) => {
+                setShowMyTrips(false);
+                setParticipantsTripId(id);
+              }}
               onClose={() => setShowMyTrips(false)}
             />
           </motion.div>
@@ -438,7 +444,27 @@ const App: React.FC = () => {
                 setSelectedTripId(null);
                 setShowLogin(true);
               }}
+              onOpenCommandCenter={(id) => {
+                setSelectedTripId(null);
+                setParticipantsTripId(id);
+              }}
               onClose={() => setSelectedTripId(null)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {participantsTripId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[700]"
+          >
+            <TripParticipantsPage 
+              tripId={participantsTripId}
+              onClose={() => setParticipantsTripId(null)}
             />
           </motion.div>
         )}

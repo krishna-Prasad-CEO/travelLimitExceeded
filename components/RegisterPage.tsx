@@ -53,7 +53,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess, onLoginC
         password: formData.password,
         options: {
           data: {
-            full_name: formData.name,
+            name: formData.name, // Changed from full_name to name
             phone_number: formData.phone,
             riding_experience: formData.experience,
             bike_type: formData.bikeType,

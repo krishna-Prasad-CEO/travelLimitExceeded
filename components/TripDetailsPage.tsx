@@ -7,7 +7,7 @@ import {
   ArrowLeft, Sparkles, Navigation, 
   User, CheckCircle2, ShieldAlert, 
   Loader2, Share2, Heart, Clock, Check,
-  Zap, Compass, Target, Globe
+  Zap, Compass, Target, Globe, Radio
 } from 'lucide-react';
 import { TripDetails } from '../types';
 import { supabase } from '../supabaseClient';
@@ -16,6 +16,7 @@ interface TripDetailsPageProps {
   tripId: string;
   isAuthenticated: boolean;
   onLoginRequired: () => void;
+  onOpenCommandCenter: (id: string) => void;
   onClose: () => void;
 }
 
@@ -23,6 +24,7 @@ const TripDetailsPage: React.FC<TripDetailsPageProps> = ({
   tripId, 
   isAuthenticated, 
   onLoginRequired, 
+  onOpenCommandCenter,
   onClose 
 }) => {
   const [trip, setTrip] = useState<TripDetails | null>(null);
@@ -96,16 +98,18 @@ const TripDetailsPage: React.FC<TripDetailsPageProps> = ({
     }
   }, [trip]);
 
-  const handleJoinTrip = async () => {
+  const handleAction = async () => {
     if (!isAuthenticated) {
       onLoginRequired();
       return;
     }
 
-    if (trip?.creatorId === currentUserId) {
-      setNotification({ type: 'error', message: "You are the primary navigator of this odyssey." });
+    if (isOwner || userRequestStatus === 'approved') {
+      onOpenCommandCenter(tripId);
       return;
     }
+
+    if (userRequestStatus === 'pending') return;
 
     setIsJoining(true);
     try {
@@ -153,13 +157,14 @@ const TripDetailsPage: React.FC<TripDetailsPageProps> = ({
   if (!trip) return null;
 
   const isOwner = trip.creatorId === currentUserId;
-  const buttonDisabled = isJoining || trip.availableSeats === 0 || !!userRequestStatus || isOwner;
+  const isApproved = userRequestStatus === 'approved';
+  const buttonDisabled = isJoining || (trip.availableSeats === 0 && !isOwner && !isApproved) || userRequestStatus === 'rejected';
 
   const getButtonContent = () => {
     if (isJoining) return <Loader2 className="animate-spin" />;
-    if (isOwner) return "YOUR ACTIVE ODYSSEY";
+    if (isOwner) return <span className="flex items-center gap-4">OPEN COMMAND CENTER <Radio size={18} className="animate-pulse" /></span>;
+    if (isApproved) return <span className="flex items-center gap-4">ENTER COMMAND CENTER <Radio size={18} className="animate-pulse" /></span>;
     if (userRequestStatus === 'pending') return <span className="flex items-center gap-3"><Clock size={18}/> SIGNAL PENDING</span>;
-    if (userRequestStatus === 'approved') return <span className="flex items-center gap-3"><Check size={18}/> AUTHORIZED ENTRY</span>;
     if (userRequestStatus === 'rejected') return "SIGNAL REFUSED";
     if (trip.availableSeats === 0) return "MANIFEST FULL";
     return <span className="flex items-center gap-4">REQUEST ODYSSEY JOIN <Navigation size={20}/></span>;
@@ -293,11 +298,11 @@ const TripDetailsPage: React.FC<TripDetailsPageProps> = ({
           <motion.button 
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
-            onClick={handleJoinTrip} 
+            onClick={handleAction} 
             disabled={buttonDisabled} 
             className={`w-full h-24 rounded-3xl font-bold uppercase tracking-[0.6em] transition-all flex items-center justify-center gap-6 shadow-2xl text-[11px] border ${
-                isOwner 
-                ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 cursor-default'
+                isOwner || isApproved
+                ? 'bg-indigo-500 text-white border-indigo-400 shadow-[0_0_50px_rgba(79,70,229,0.3)]'
                 : 'bg-white text-slate-950 hover:bg-indigo-50 disabled:opacity-20 disabled:cursor-not-allowed'
             }`}
           >

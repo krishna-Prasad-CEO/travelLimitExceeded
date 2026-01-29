@@ -11,25 +11,29 @@ Focus on being helpful, clear, and kind.
 Never return images or image queries.`;
 
 /**
- * Robust retry mechanism with exponential backoff for handling 5xx errors and transient Rpc/XHR failures.
+ * Robust retry mechanism with exponential backoff for handling 5xx errors and transient Rpc/XHR/Fetch failures.
  */
-async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2, initialDelay = 1000): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, initialDelay = 1000): Promise<T> {
   let lastError: any;
   for (let i = 0; i <= maxRetries; i++) {
     try {
       return await fn();
     } catch (error: any) {
       lastError = error;
+      const errorMessage = (error.message || "").toLowerCase();
       const isRetryable = 
         error.status === 500 || 
         error.status === 503 || 
         error.status === 504 ||
-        error.message?.includes('xhr error') ||
-        error.message?.includes('Rpc failed');
+        error.status === 429 || // Rate limit
+        errorMessage.includes('fetch') ||
+        errorMessage.includes('xhr error') ||
+        errorMessage.includes('rpc failed') ||
+        errorMessage.includes('network');
 
       if (i < maxRetries && isRetryable) {
         const delay = initialDelay * Math.pow(2, i);
-        console.warn(`API call failed (Attempt ${i + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`, error);
+        console.warn(`Service request failed (Attempt ${i + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`, error);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
