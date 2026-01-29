@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, Search, Globe, Plane, ArrowRight, Loader2, Calendar, Gauge, Users, TrendingUp,
-  Navigation, CheckCircle2, ShieldAlert, Clock, Check
+  Navigation, CheckCircle2, ShieldAlert, Clock, Check, Briefcase, Sparkles
 } from 'lucide-react';
 import { TripSummary } from '../types';
 import { supabase } from '../supabaseClient';
@@ -44,6 +44,7 @@ const ExploreTripsPage: React.FC<ExploreTripsPageProps> = ({ onTripClick, onClos
 
         const tripsData: TripSummary[] = (tripsDataRaw || []).map(t => ({
           id: t.id,
+          creatorId: t.creator_id,
           startLocation: t.start_location,
           destination: t.destination,
           startDate: t.start_date,
@@ -101,6 +102,11 @@ const ExploreTripsPage: React.FC<ExploreTripsPageProps> = ({ onTripClick, onClos
     
     if (!currentUserId) {
       setNotification({ type: 'error', message: "Identity verification required. Sign in first." });
+      return;
+    }
+
+    if (trip.creatorId === currentUserId) {
+      onTripClick(trip.id);
       return;
     }
 
@@ -173,7 +179,7 @@ const ExploreTripsPage: React.FC<ExploreTripsPageProps> = ({ onTripClick, onClos
           ) : filteredTrips.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 opacity-20">
               <Plane size={64} className="animate-bounce" />
-              <h3 className="text-2xl font-display font-bold text-white mt-8 uppercase">No Signals</h3>
+              <h3 className="text-2xl font-display font-bold text-white mt-8 uppercase tracking-[0.2em]">No Signals Detected</h3>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -181,6 +187,7 @@ const ExploreTripsPage: React.FC<ExploreTripsPageProps> = ({ onTripClick, onClos
                 <ExploreCard 
                   key={trip.id} 
                   trip={trip} 
+                  isOwner={trip.creatorId === currentUserId}
                   requestStatus={userRequests[trip.id]}
                   onInspect={() => onTripClick(trip.id)} 
                   onJoin={(e) => handleJoinRequest(e, trip)}
@@ -211,14 +218,16 @@ const ExploreTripsPage: React.FC<ExploreTripsPageProps> = ({ onTripClick, onClos
 
 const ExploreCard: React.FC<{ 
   trip: TripSummary, 
+  isOwner: boolean,
   requestStatus?: string,
   onInspect: () => void, 
   onJoin: (e: React.MouseEvent) => void,
   isJoining: boolean
-}> = ({ trip, requestStatus, onInspect, onJoin, isJoining }) => {
+}> = ({ trip, isOwner, requestStatus, onInspect, onJoin, isJoining }) => {
   
   const getButtonContent = () => {
     if (isJoining) return <Loader2 size={16} className="animate-spin" />;
+    if (isOwner) return <><Briefcase size={14} /> Your Odyssey</>;
     if (requestStatus === 'pending') return <><Clock size={14} /> Signal Pending</>;
     if (requestStatus === 'approved') return <><Check size={14} /> Authorized</>;
     if (requestStatus === 'rejected') return <>Access Denied</>;
@@ -226,32 +235,50 @@ const ExploreCard: React.FC<{
     return <>Request to Join <Navigation size={14} /></>;
   };
 
-  const isButtonDisabled = isJoining || trip.availableSeats === 0 || !!requestStatus;
+  const isButtonDisabled = isJoining || (trip.availableSeats === 0 && !isOwner) || (!!requestStatus && !isOwner);
 
   return (
     <motion.div
       whileHover={{ y: -5 }}
       onClick={onInspect}
-      className="bg-slate-900/60 border border-white/5 rounded-[2.5rem] p-8 flex flex-col justify-between cursor-pointer shadow-xl transition-all group"
+      className="bg-slate-900/60 border border-white/5 rounded-[2.5rem] p-8 flex flex-col justify-between cursor-pointer shadow-xl transition-all group overflow-hidden relative"
     >
+      {/* Added Sparkles icon from lucide-react */}
+      {isOwner && (
+        <div className="absolute top-0 right-0 p-6 opacity-[0.05] pointer-events-none">
+          <Sparkles size={120} />
+        </div>
+      )}
+      
       <div className="space-y-6">
         <div className="flex justify-between items-start">
-          <h3 className="text-2xl font-display font-bold text-white uppercase leading-tight">{trip.destination}</h3>
+          <h3 className="text-2xl font-display font-bold text-white uppercase leading-tight tracking-tight">{trip.destination}</h3>
           <span className={`px-4 py-1.5 rounded-full text-[8px] font-bold border ${trip.status === 'full' ? 'border-red-500/20 text-red-400' : 'border-teal-500/20 text-teal-400'}`}>
-            {trip.status}
+            {isOwner ? 'HOSTING' : trip.status}
           </span>
         </div>
         <div className="space-y-2">
           <p className="text-[10px] text-white/30 uppercase tracking-widest">{trip.startLocation} &rarr; {trip.startDate}</p>
-          <p className="text-xs text-teal-400 font-bold uppercase">{trip.availableSeats} VACANT NODES</p>
+          <div className="flex items-center gap-3">
+             <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(trip.availableSeats / trip.seats) * 100}%` }}
+                  className="h-full bg-teal-500 shadow-[0_0_10px_rgba(20,184,166,0.3)]"
+                />
+             </div>
+             <p className="text-[9px] text-teal-400 font-bold uppercase whitespace-nowrap">{trip.availableSeats} VACANT NODES</p>
+          </div>
         </div>
       </div>
       <div className="mt-8 flex flex-col gap-3">
         <button 
           onClick={onJoin}
-          disabled={isButtonDisabled}
+          disabled={isButtonDisabled && !isOwner}
           className={`w-full h-14 rounded-2xl flex items-center justify-center gap-4 text-[10px] font-bold uppercase tracking-[0.2em] transition-all shadow-lg ${
-            requestStatus === 'approved' 
+            isOwner
+              ? 'bg-indigo-500 text-white hover:bg-indigo-400'
+              : requestStatus === 'approved' 
               ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20 cursor-default'
               : requestStatus === 'pending'
               ? 'bg-white/5 text-white/40 border border-white/10 cursor-default'

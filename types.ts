@@ -76,6 +76,7 @@ export interface JoinRequest {
 
 export interface TripSummary {
   id: string;
+  creatorId: string;
   startLocation: string;
   destination: string;
   startDate: string;
