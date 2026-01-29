@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -21,26 +22,27 @@ interface TripParticipantsPageProps {
 }
 
 const TripParticipantsPage: React.FC<TripParticipantsPageProps> = ({ tripId, onClose }) => {
-  const [trip, setTrip] = useState<TripDetails | null>(null);
+  const [trip, setTrip] = useState<any | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isParticipantsLoading, setIsParticipantsLoading] = useState(true);
   const [errorStatus, setErrorStatus] = useState<'none' | 'denied' | 'error'>('none');
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       setErrorStatus('none');
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        // 1. Get current authenticated user session for identity fallback
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) {
           setErrorStatus('denied');
           return;
         }
-        setCurrentUserId(user.id);
+        setCurrentUser(authUser);
 
-        // 1. Fetch Trip Details
+        // 2. Fetch Trip Details
         const { data: tripData, error: tripError } = await supabase
           .from('trips')
           .select('*')
@@ -53,8 +55,8 @@ const TripParticipantsPage: React.FC<TripParticipantsPageProps> = ({ tripId, onC
           return;
         }
 
-        // 2. Verify Access (Host or Approved)
-        const isHost = String(tripData.creator_id) === String(user.id);
+        // 3. Verify Access (Host or Approved)
+        const isHost = String(tripData.creator_id) === String(authUser.id);
         let isApproved = false;
 
         if (!isHost) {
@@ -62,7 +64,7 @@ const TripParticipantsPage: React.FC<TripParticipantsPageProps> = ({ tripId, onC
             .from('join_requests')
             .select('status')
             .eq('trip_id', tripId)
-            .eq('user_id', user.id)
+            .eq('user_id', authUser.id)
             .eq('status', 'approved')
             .maybeSingle();
           
@@ -73,6 +75,17 @@ const TripParticipantsPage: React.FC<TripParticipantsPageProps> = ({ tripId, onC
           setErrorStatus('denied');
           return;
         }
+
+        // 4. Fetch Host Profile for full Identity (Name + Email)
+        const { data: hostProfile } = await supabase
+          .from('profiles')
+          .select('id, name, email')
+          .eq('id', tripData.creator_id)
+          .single();
+
+        // If the current user is the host, we can also use their session metadata
+        const hostName = (isHost ? (authUser.user_metadata?.name || hostProfile?.name) : hostProfile?.name) || "Lead Navigator";
+        const hostEmail = (isHost ? authUser.email : hostProfile?.email) || "Identity Secured";
 
         setTrip({
           id: tripData.id,
@@ -86,17 +99,17 @@ const TripParticipantsPage: React.FC<TripParticipantsPageProps> = ({ tripId, onC
           availableSeats: tripData.seats_left,
           description: tripData.description,
           creator: {
-            name: "Lead Navigator",
+            name: hostName,
+            email: hostEmail,
             avatar: `https://i.pravatar.cc/150?u=${tripData.creator_id}`
           }
         });
 
         setIsLoading(false); 
 
-        // 3. Fetch Approved Participants using Resilient Batch Sync
+        // 5. Fetch Approved Participants
         setIsParticipantsLoading(true);
         
-        // Step A: Get raw requests (no joins)
         const { data: requests, error: requestsError } = await supabase
           .from('join_requests')
           .select('user_id, status')
@@ -106,7 +119,6 @@ const TripParticipantsPage: React.FC<TripParticipantsPageProps> = ({ tripId, onC
         if (requestsError) throw requestsError;
 
         if (requests && requests.length > 0) {
-          // Step B: Fetch profiles for these users
           const userIds = requests.map(r => r.user_id);
           const { data: profiles } = await supabase
             .from('profiles')
@@ -115,15 +127,21 @@ const TripParticipantsPage: React.FC<TripParticipantsPageProps> = ({ tripId, onC
 
           const profileMap = new Map((profiles || []).map(p => [p.id, p]));
 
-          // Step C: Map and filter (strictly excluding the host to avoid duplication)
           const filteredParticipants = requests
             .filter(r => String(r.user_id) !== String(tripData.creator_id))
             .map(r => {
-              const p = profileMap.get(r.user_id) as any;
+              const profile = profileMap.get(r.user_id) as any;
+              const isMe = String(r.user_id) === String(authUser.id);
+              
+              // Resilience: If profile table is empty/missing (due to RLS or sync delay), 
+              // and it's the current user, use the auth session data.
+              const pName = (isMe ? (authUser.user_metadata?.name || profile?.name) : profile?.name) || `Traveler ${r.user_id.substring(0, 5)}`;
+              const pEmail = (isMe ? authUser.email : profile?.email) || "Identity Secured";
+
               return {
                 id: r.user_id,
-                name: p?.name || `Traveler ${r.user_id.substring(0, 5)}`,
-                email: p?.email || "Identity Secured",
+                name: pName,
+                email: pEmail,
                 avatar: `https://i.pravatar.cc/150?u=${r.user_id}`
               };
             });
@@ -165,7 +183,6 @@ const TripParticipantsPage: React.FC<TripParticipantsPageProps> = ({ tripId, onC
     );
   }
 
-  // Active Nodes = Host (1) + Approved Participants
   const activeNodeCount = 1 + participants.length;
 
   return (
@@ -215,19 +232,29 @@ const TripParticipantsPage: React.FC<TripParticipantsPageProps> = ({ tripId, onC
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Lead Navigator Card (Host) */}
               <div className="col-span-1 md:col-span-2">
-                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-[2.5rem] p-8 flex items-center justify-between">
-                  <div className="flex items-center gap-6">
-                    <img src={trip?.creator.avatar} className="w-16 h-16 rounded-2xl border border-indigo-500/30" />
-                    <div>
-                      <h3 className="text-lg font-bold text-white uppercase">{String(trip?.creatorId) === String(currentUserId) ? 'YOU (LEAD)' : 'LEAD NAVIGATOR'}</h3>
-                      <p className="text-[10px] text-indigo-400 font-official uppercase tracking-widest mt-1">Primary Host</p>
+                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-[2.5rem] p-8 flex items-center justify-between transition-all hover:bg-indigo-500/20">
+                  <div className="flex items-center gap-6 overflow-hidden">
+                    <img src={trip?.creator.avatar} className="w-16 h-16 rounded-2xl border border-indigo-500/30 flex-shrink-0" />
+                    <div className="overflow-hidden">
+                      <h3 className="text-lg font-bold text-white uppercase tracking-tight">
+                        {trip?.creator.name} {String(trip?.creatorId) === String(currentUser?.id) && '(YOU)'}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[9px] text-indigo-400 font-official uppercase tracking-widest">Primary Host</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2 text-white/60">
+                        <Mail size={12} className="flex-shrink-0" />
+                        <p className="text-[10px] font-official uppercase tracking-widest break-all">{trip?.creator.email}</p>
+                      </div>
                     </div>
                   </div>
-                  <Target size={20} className="text-indigo-400" />
+                  <Target size={20} className="text-indigo-400 flex-shrink-0 ml-4" />
                 </div>
               </div>
 
+              {/* Participant Cards */}
               {participants.map((p) => (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
@@ -235,11 +262,13 @@ const TripParticipantsPage: React.FC<TripParticipantsPageProps> = ({ tripId, onC
                   key={p.id}
                   className="bg-white/[0.03] border border-white/5 rounded-[2.5rem] p-8 flex items-center justify-between group hover:bg-white/[0.05] transition-all"
                 >
-                  <div className="flex items-center gap-6">
-                    <img src={p.avatar} className="w-14 h-14 rounded-2xl border border-white/10" />
+                  <div className="flex items-center gap-6 overflow-hidden">
+                    <img src={p.avatar} className="w-14 h-14 rounded-2xl border border-white/10 flex-shrink-0" />
                     <div className="overflow-hidden">
-                      <h3 className="text-sm font-bold text-white uppercase group-hover:text-teal-400 transition-colors">{String(p.id) === String(currentUserId) ? 'YOU' : p.name}</h3>
-                      <div className="flex items-center gap-2 mt-1 text-white/30">
+                      <h3 className="text-sm font-bold text-white uppercase group-hover:text-teal-400 transition-colors">
+                        {p.name} {String(p.id) === String(currentUser?.id) && '(YOU)'}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1 text-white/50">
                         <Mail size={12} className="flex-shrink-0" />
                         <p className="text-[9px] font-official uppercase tracking-widest break-all">{p.email}</p>
                       </div>
@@ -249,6 +278,7 @@ const TripParticipantsPage: React.FC<TripParticipantsPageProps> = ({ tripId, onC
                 </motion.div>
               ))}
 
+              {/* Empty Nodes */}
               {!isParticipantsLoading && Array.from({ length: trip?.availableSeats || 0 }).map((_, i) => (
                 <div key={i} className="bg-white/[0.01] border border-dashed border-white/10 rounded-[2.5rem] p-8 flex items-center justify-center opacity-20">
                   <span className="text-[9px] font-official uppercase tracking-[0.4em] font-bold">Node Vacant</span>
